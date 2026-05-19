@@ -199,7 +199,7 @@ export default function Home() {
             </p>
 
             <p className="mt-4 max-w-2xl text-xs font-bold uppercase tracking-[0.2em] text-emerald-300">
-              Contador Público + experiencia gestionando empresa + automatización real de procesos
+              Contabilidad + gestión empresarial + automatización operativa
             </p>
 
             <div className="mt-8 flex flex-col gap-4 sm:flex-row">
@@ -444,14 +444,14 @@ export default function Home() {
           <div className="pointer-events-none absolute right-0 top-0 rounded-full bg-emerald-500 p-32 opacity-20 blur-[120px]" />
 
           <h2 className="text-3xl font-black tracking-tight text-white md:text-5xl">
-            Formación contable, experiencia de gestión y capacidad tecnológica.
+            Formación contable, gestión empresarial y automatización operativa.
           </h2>
 
           <p className="mt-6 max-w-3xl text-xl leading-relaxed text-slate-400">
-            Luján Finanzas nace de combinar tres miradas: la precisión técnica
-            del contador, la experiencia de haber gestionado empresa, inventario
-            y caja, y la capacidad de automatizar procesos administrativos con
-            herramientas concretas.
+            Luján Finanzas combina tres miradas: precisión técnica contable,
+            experiencia real en gestión empresarial —inventario, caja y
+            operación diaria— y capacidad de automatizar procesos
+            administrativos con herramientas concretas.
           </p>
 
           <p className="mt-5 max-w-3xl text-lg leading-relaxed text-slate-400">
@@ -473,7 +473,7 @@ export default function Home() {
             />
             <AuthorityBlock
               icon={<BarChart3 className="h-6 w-6 text-emerald-400" />}
-              title="Gestión real de empresa"
+              title="Gestión empresarial real"
               text="Experiencia directa administrando inventario, caja, rentabilidad y operación comercial."
             />
           </div>
