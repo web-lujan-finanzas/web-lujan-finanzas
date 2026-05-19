@@ -183,7 +183,7 @@ function getPriorityFromScore(score: number): {
       priority: "alta",
       priorityRank: 1,
       status: "Lead caliente",
-      nextAction: "Contactar hoy y coordinar reunión estratégica"
+      nextAction: "Contactar hoy y coordinar evaluación de estructura"
     };
   }
 
@@ -192,7 +192,7 @@ function getPriorityFromScore(score: number): {
       priority: "media",
       priorityRank: 2,
       status: "Lead calificado",
-      nextAction: "Enviar preguntas de calificación y ofrecer reunión inicial"
+      nextAction: "Enviar preguntas de calificación y ofrecer evaluación inicial"
     };
   }
 
@@ -237,9 +237,12 @@ function scoreLead(input: CleanLeadInput): number {
   const painLower = input.pain.toLowerCase();
 
   const highIntentTerms = [
+    "orden",
+    "ordenar",
     "automatizar",
     "automatización",
     "cobranzas",
+    "comprobantes",
     "reportes",
     "dashboard",
     "crm",
@@ -254,7 +257,12 @@ function scoreLead(input: CleanLeadInput): number {
     "ganancias",
     "iva",
     "deuda",
-    "bloqueo"
+    "bloqueo",
+    "procesos",
+    "estructura",
+    "control",
+    "indicadores",
+    "gerenciales"
   ];
 
   for (const term of highIntentTerms) {
@@ -269,15 +277,15 @@ function buildWhatsappMessage(input: CleanLeadInput): string {
 
   const baseMessages: Record<Segment, string> = {
     monotributo:
-      "Quiero asesoramiento para ordenar mi situación fiscal como profesional o monotributista.",
+      "Quiero solicitar una evaluación fiscal inicial para ordenar mis números y entender mejor mi situación.",
     pyme:
-      "Quiero información sobre la gestión integral para mi PyME.",
+      "Quiero aplicar al diagnóstico LF360 para ordenar procesos administrativos, comprobantes y cobranzas.",
     agro:
-      "Quiero asesoramiento para una empresa vinculada al agro, finca o bodega.",
+      "Quiero solicitar un mapa de orden financiero para mi PyME, finca, bodega o empresa agro.",
     cfo:
-      "Busco una reunión sobre estrategia financiera y automatización empresarial.",
+      "Quiero solicitar una evaluación de estructura para escalar sin sumar caos operativo.",
     general:
-      "Quiero coordinar una reunión inicial."
+      "Quiero coordinar una evaluación inicial para ordenar números, procesos y estructura operativa."
   };
 
   const parts = [intro, baseMessages[input.segment]];
@@ -291,11 +299,11 @@ function buildWhatsappMessage(input: CleanLeadInput): string {
   }
 
   if (input.urgency === "alta") {
-    parts.push("Tengo prioridad alta para resolverlo.");
+    parts.push("Prioridad: alta.");
   }
 
   if (input.pain) {
-    parts.push(`Necesidad: ${input.pain}`);
+    parts.push(`Situación: ${input.pain}`);
   }
 
   return parts.join(" ");
@@ -306,10 +314,7 @@ function buildWhatsappUrl(phoneNumber: string, message: string): string {
   return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
 }
 
-function enrichLead(
-  input: CleanLeadInput,
-  request: Request
-): EnrichedLead {
+function enrichLead(input: CleanLeadInput, request: Request): EnrichedLead {
   const score = scoreLead(input);
   const priorityData = getPriorityFromScore(score);
   const whatsappMessage = buildWhatsappMessage(input);
@@ -341,7 +346,7 @@ async function postToGoogleSheets(lead: EnrichedLead): Promise<void> {
   const timeout = setTimeout(() => controller.abort(), 7000);
 
   try {
-    await fetch(GOOGLE_SHEETS_WEBHOOK_URL, {
+    const response = await fetch(GOOGLE_SHEETS_WEBHOOK_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
@@ -354,6 +359,10 @@ async function postToGoogleSheets(lead: EnrichedLead): Promise<void> {
       }),
       signal: controller.signal
     });
+
+    if (!response.ok) {
+      throw new Error(`Google Sheets webhook error: ${response.status}`);
+    }
   } finally {
     clearTimeout(timeout);
   }
@@ -371,7 +380,7 @@ export async function POST(request: Request) {
           ok: true,
           waUrl: buildWhatsappUrl(
             WHATSAPP_NUMBER,
-            "Hola, vi la web de Luján Finanzas y quiero hacer una consulta."
+            "Hola, vi la web de Luján Finanzas y quiero coordinar una evaluación inicial."
           )
         },
         {
@@ -405,7 +414,7 @@ export async function POST(request: Request) {
         error: "No se pudo procesar la consulta.",
         waUrl: buildWhatsappUrl(
           WHATSAPP_NUMBER,
-          "Hola, vi la web de Luján Finanzas y quiero coordinar una reunión inicial."
+          "Hola, vi la web de Luján Finanzas y quiero coordinar una evaluación inicial para ordenar números, procesos y estructura operativa."
         )
       },
       {
