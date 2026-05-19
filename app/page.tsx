@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import {
   ArrowRight,
   BarChart3,
@@ -31,6 +31,8 @@ type CalculatorAnswers = {
   reportes: number;
   decisiones: number;
 };
+
+type CalculatorKey = keyof CalculatorAnswers;
 
 const bentoCards: BentoCard[] = [
   {
@@ -104,8 +106,33 @@ export default function Home() {
     return "Fricción baja";
   }, [frictionScore]);
 
+  async function trackEvent(eventName: string, metadata: Record<string, unknown> = {}) {
+    try {
+      await fetch("/api/events", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          eventName,
+          path: "/",
+          metadata
+        })
+      });
+    } catch {
+      // El tracking no debe romper la experiencia del usuario.
+    }
+  }
+
   async function enviarLead(segment: Segment, extraPain?: string) {
     setLoading(segment);
+
+    await trackEvent("lead_cta_clicked", {
+      segment,
+      extraPain: Boolean(extraPain),
+      frictionScore,
+      frictionLabel
+    });
 
     try {
       const res = await fetch("/api/leads", {
@@ -119,6 +146,12 @@ export default function Home() {
       const data = await res.json();
 
       if (data.waUrl) {
+        await trackEvent("whatsapp_opened", {
+          segment,
+          frictionScore,
+          frictionLabel
+        });
+
         window.location.href = data.waUrl;
       } else {
         alert("No se pudo iniciar el contacto por WhatsApp.");
@@ -127,6 +160,46 @@ export default function Home() {
       alert("No se pudo conectar con el sistema. Intentá nuevamente.");
     } finally {
       setLoading(null);
+    }
+  }
+
+  function setCalculatorAnswer(key: CalculatorKey, value: number) {
+    const nextAnswers = {
+      ...answers,
+      [key]: value
+    };
+
+    setAnswers(nextAnswers);
+
+    trackEvent("calculator_answered", {
+      question: key,
+      value,
+      answers: nextAnswers
+    });
+
+    const allAnswered = Object.values(nextAnswers).some((answer) => answer > 0);
+
+    if (allAnswered) {
+      trackEvent("calculator_started", {
+        question: key
+      });
+    }
+
+    const completed =
+      nextAnswers.cobranzas !== 0 ||
+      nextAnswers.comprobantes !== 0 ||
+      nextAnswers.reportes !== 0 ||
+      nextAnswers.decisiones !== 0;
+
+    if (completed) {
+      const values = Object.values(nextAnswers);
+      const total = values.reduce((acc, current) => acc + current, 0);
+      const score = Math.round((total / 16) * 100);
+
+      trackEvent("calculator_score_updated", {
+        score,
+        answers: nextAnswers
+      });
     }
   }
 
@@ -139,6 +212,12 @@ export default function Home() {
       `Reportes: ${answers.reportes}/4. ` +
       `Decisiones: ${answers.decisiones}/4. ` +
       `Quiero evaluar cómo ordenar procesos administrativos y financieros con LF360.`;
+
+    trackEvent("calculator_cta_clicked", {
+      frictionScore,
+      frictionLabel,
+      answers
+    });
 
     enviarLead("cfo", pain);
   }
@@ -156,6 +235,9 @@ export default function Home() {
             <a href="#calculadora" className="transition hover:text-white">
               Test operativo
             </a>
+            <a href="#casos" className="transition hover:text-white">
+              Casos
+            </a>
             <a href="#lf360" className="transition hover:text-white">
               Método LF360
             </a>
@@ -167,7 +249,7 @@ export default function Home() {
               disabled={loading !== null}
               className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-5 py-2 text-emerald-400 transition hover:bg-emerald-500/20 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              Solicitar evaluación inicial
+              Solicitar diagnóstico inicial
             </button>
           </nav>
         </div>
@@ -175,30 +257,30 @@ export default function Home() {
 
       <section
         id="inicio"
-        className="relative overflow-hidden px-6 pb-20 pt-32 md:pt-40"
+        className="relative overflow-hidden px-6 pb-16 pt-28 md:pb-20 md:pt-40"
       >
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(16,185,129,0.1),transparent_40%)]" />
 
         <div className="relative mx-auto grid max-w-7xl items-center gap-12 lg:grid-cols-[1.1fr_.9fr]">
           <div>
-            <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-mono uppercase tracking-widest text-slate-400">
+            <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-mono uppercase tracking-widest text-slate-400">
               <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-400" />
               Finanzas · Procesos · Automatización
             </div>
 
-            <h1 className="bg-gradient-to-br from-white to-slate-500 bg-clip-text text-5xl font-black leading-[1.05] tracking-tight text-transparent md:text-6xl xl:text-7xl">
+            <h1 className="bg-gradient-to-br from-white to-slate-500 bg-clip-text text-4xl font-black leading-[1.05] tracking-tight text-transparent sm:text-5xl md:text-6xl xl:text-7xl">
               Evolucioná tu gestión financiera. <br />
               Ordená la empresa como un{" "}
               <span className="text-emerald-400">sistema.</span>
             </h1>
 
-            <p className="mt-6 max-w-xl text-lg leading-relaxed text-slate-400">
+            <p className="mt-6 max-w-xl text-base leading-relaxed text-slate-400 sm:text-lg">
               Luján Finanzas integra contabilidad, control operativo y
               automatización para que dejes de decidir solo con el saldo del
               banco, planillas desactualizadas o información dispersa.
             </p>
 
-            <p className="mt-4 max-w-2xl text-xs font-bold uppercase tracking-[0.2em] text-emerald-300">
+            <p className="mt-4 max-w-2xl text-xs font-bold uppercase tracking-[0.18em] text-emerald-300">
               Contabilidad + gestión empresarial + automatización operativa
             </p>
 
@@ -208,17 +290,17 @@ export default function Home() {
                 disabled={loading !== null}
                 className="group relative flex items-center justify-center gap-3 rounded-xl bg-white px-8 py-4 text-sm font-bold text-slate-950 transition-all hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                Solicitar evaluación de estructura
+                Solicitar diagnóstico inicial LF360
                 <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
               </button>
 
-              <button
-                onClick={() => enviarLead("pyme")}
-                disabled={loading !== null}
-                className="flex items-center justify-center rounded-xl border border-white/10 bg-white/5 px-8 py-4 text-sm font-bold text-white transition-all hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60"
+              <a
+                href="#calculadora"
+                onClick={() => trackEvent("hero_calculator_anchor_clicked")}
+                className="flex items-center justify-center rounded-xl border border-white/10 bg-white/5 px-8 py-4 text-sm font-bold text-white transition-all hover:bg-white/10"
               >
-                Aplicar al diagnóstico LF360
-              </button>
+                Calcular fricción operativa
+              </a>
             </div>
           </div>
 
@@ -231,7 +313,7 @@ export default function Home() {
       </section>
 
       <div className="border-y border-white/5 bg-white/[0.02] py-6">
-        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-center gap-10 px-6 opacity-60">
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-center gap-8 px-6 opacity-60 md:gap-10">
           <p className="text-sm font-mono font-bold uppercase tracking-widest">
             Herramientas de trabajo:
           </p>
@@ -243,7 +325,7 @@ export default function Home() {
         </div>
       </div>
 
-      <section id="dolores" className="px-6 py-32">
+      <section id="dolores" className="px-6 py-24 md:py-32">
         <div className="mx-auto max-w-7xl">
           <h2 className="text-3xl font-black tracking-tight text-white md:text-5xl">
             Problemas que suelen aparecer cuando la empresa empieza a crecer.
@@ -254,7 +336,7 @@ export default function Home() {
             decidir.
           </p>
 
-          <div className="mt-16 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-12 grid gap-6 md:grid-cols-2 lg:mt-16 lg:grid-cols-3">
             {bentoCards.map((card) => (
               <BentoProblemCard
                 key={card.segment}
@@ -270,7 +352,7 @@ export default function Home() {
 
       <section
         id="calculadora"
-        className="border-y border-white/5 bg-[#050B14] px-6 py-32"
+        className="border-y border-white/5 bg-[#050B14] px-6 py-24 md:py-32"
       >
         <div className="mx-auto grid max-w-7xl gap-12 lg:grid-cols-[0.9fr_1.1fr] lg:items-start">
           <div>
@@ -292,14 +374,14 @@ export default function Home() {
             <button
               onClick={solicitarIntervencionDesdeCalculadora}
               disabled={loading !== null}
-              className="mt-10 flex items-center gap-3 rounded-xl bg-emerald-400 px-7 py-4 text-sm font-black text-slate-950 transition hover:bg-emerald-300 disabled:cursor-not-allowed disabled:opacity-60"
+              className="mt-8 flex w-full items-center justify-center gap-3 rounded-xl bg-emerald-400 px-7 py-4 text-sm font-black text-slate-950 transition hover:bg-emerald-300 disabled:cursor-not-allowed disabled:opacity-60 sm:w-fit"
             >
               Evaluar este resultado con LF360
               <ArrowRight className="h-4 w-4" />
             </button>
           </div>
 
-          <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-6 shadow-2xl backdrop-blur">
+          <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-5 shadow-2xl backdrop-blur md:p-6">
             <div className="grid gap-5">
               <FrictionQuestion
                 title="¿Cómo hacen seguimiento de cobranzas?"
@@ -310,9 +392,7 @@ export default function Home() {
                   ["Circuito automatizado con responsables", 0]
                 ]}
                 value={answers.cobranzas}
-                onChange={(value) =>
-                  setAnswers((prev) => ({ ...prev, cobranzas: value }))
-                }
+                onChange={(value) => setCalculatorAnswer("cobranzas", value)}
               />
 
               <FrictionQuestion
@@ -324,9 +404,7 @@ export default function Home() {
                   ["Circuito ordenado y trazable", 0]
                 ]}
                 value={answers.comprobantes}
-                onChange={(value) =>
-                  setAnswers((prev) => ({ ...prev, comprobantes: value }))
-                }
+                onChange={(value) => setCalculatorAnswer("comprobantes", value)}
               />
 
               <FrictionQuestion
@@ -338,9 +416,7 @@ export default function Home() {
                   ["Semanalmente, con indicadores claros", 0]
                 ]}
                 value={answers.reportes}
-                onChange={(value) =>
-                  setAnswers((prev) => ({ ...prev, reportes: value }))
-                }
+                onChange={(value) => setCalculatorAnswer("reportes", value)}
               />
 
               <FrictionQuestion
@@ -352,9 +428,7 @@ export default function Home() {
                   ["Con información actualizada y ordenada", 0]
                 ]}
                 value={answers.decisiones}
-                onChange={(value) =>
-                  setAnswers((prev) => ({ ...prev, decisiones: value }))
-                }
+                onChange={(value) => setCalculatorAnswer("decisiones", value)}
               />
             </div>
 
@@ -391,12 +465,56 @@ export default function Home() {
         </div>
       </section>
 
+      <section id="casos" className="px-6 py-24 md:py-32">
+        <div className="mx-auto max-w-7xl">
+          <div className="max-w-3xl">
+            <p className="text-xs font-black uppercase tracking-[0.25em] text-emerald-400">
+              Casos de orden operativo
+            </p>
+            <h2 className="mt-4 text-3xl font-black tracking-tight text-white md:text-5xl">
+              No vendemos trámites. Ordenamos circuitos que afectan caja, tiempo y decisiones.
+            </h2>
+            <p className="mt-5 text-lg leading-relaxed text-slate-400">
+              Estos son ejemplos del tipo de intervención que busca LF360:
+              detectar fricción, ordenar información y convertir tareas sueltas
+              en procesos controlables.
+            </p>
+          </div>
+
+          <div className="mt-12 grid gap-6 lg:grid-cols-3">
+            <CaseCard
+              label="Caso 01"
+              title="Comercio con cobranzas manuales"
+              problem="Seguimiento disperso entre WhatsApp, memoria y planillas sin actualización diaria."
+              intervention="Base de cobranzas, responsables, alertas y tablero simple de pendientes."
+              result="Menos tiempo administrativo y mayor visibilidad semanal sobre dinero por cobrar."
+            />
+
+            <CaseCard
+              label="Caso 02"
+              title="PyME con comprobantes desordenados"
+              problem="Documentación enviada por múltiples canales, sin criterio único de archivo."
+              intervention="Circuito de recepción, clasificación y control de documentación mensual."
+              result="Menos retrabajo, mejor cierre mensual y menos urgencias cerca de vencimientos."
+            />
+
+            <CaseCard
+              label="Caso 03"
+              title="Empresa agro con datos atrasados"
+              problem="Decisiones de caja y costos tomadas con información parcial o fuera de tiempo."
+              intervention="Mapa financiero-operativo con indicadores de caja, pagos, costos y pendientes."
+              result="Mejor lectura para decidir pagos, priorizar gastos y anticipar necesidades."
+            />
+          </div>
+        </div>
+      </section>
+
       <section
         id="lf360"
-        className="border-t border-white/5 bg-[#060D18] px-6 py-32"
+        className="border-t border-white/5 bg-[#060D18] px-6 py-24 md:py-32"
       >
         <div className="mx-auto grid max-w-7xl gap-16 lg:grid-cols-2 lg:items-start">
-          <div className="sticky top-32">
+          <div className="lg:sticky lg:top-32">
             <div className="mb-6 inline-flex items-center gap-2 font-mono text-xs font-bold uppercase tracking-widest text-emerald-400">
               <Zap className="h-4 w-4" />
               Método de trabajo
@@ -439,22 +557,22 @@ export default function Home() {
         </div>
       </section>
 
-      <section id="autoridad" className="px-6 py-32">
-        <div className="relative mx-auto max-w-5xl overflow-hidden rounded-3xl border border-white/10 bg-white/5 p-10 backdrop-blur-sm md:p-16">
+      <section id="autoridad" className="px-6 py-24 md:py-32">
+        <div className="relative mx-auto max-w-5xl overflow-hidden rounded-3xl border border-white/10 bg-white/5 p-8 backdrop-blur-sm md:p-16">
           <div className="pointer-events-none absolute right-0 top-0 rounded-full bg-emerald-500 p-32 opacity-20 blur-[120px]" />
 
           <h2 className="text-3xl font-black tracking-tight text-white md:text-5xl">
             Formación contable, gestión empresarial y automatización operativa.
           </h2>
 
-          <p className="mt-6 max-w-3xl text-xl leading-relaxed text-slate-400">
+          <p className="mt-6 max-w-3xl text-lg leading-relaxed text-slate-400 md:text-xl">
             Luján Finanzas combina tres miradas: precisión técnica contable,
             experiencia real en gestión empresarial —inventario, caja y
             operación diaria— y capacidad de automatizar procesos
             administrativos con herramientas concretas.
           </p>
 
-          <p className="mt-5 max-w-3xl text-lg leading-relaxed text-slate-400">
+          <p className="mt-5 max-w-3xl text-base leading-relaxed text-slate-400 md:text-lg">
             Hablamos el mismo idioma que el dueño porque conocemos la operación
             desde adentro: vender, cobrar, pagar, ordenar documentación y tomar
             decisiones con información incompleta.
@@ -481,7 +599,7 @@ export default function Home() {
       </section>
 
       <section className="px-6 pb-32">
-        <div className="mx-auto max-w-5xl rounded-3xl border border-emerald-400/20 bg-emerald-400/10 p-10 text-center">
+        <div className="mx-auto max-w-5xl rounded-3xl border border-emerald-400/20 bg-emerald-400/10 p-8 text-center md:p-10">
           <LockKeyhole className="mx-auto h-8 w-8 text-emerald-400" />
           <h2 className="mt-5 text-3xl font-black tracking-tight text-white md:text-5xl">
             ¿Querés avanzar con orden desde el primer día?
@@ -492,6 +610,7 @@ export default function Home() {
           </p>
           <a
             href="/onboarding"
+            onClick={() => trackEvent("onboarding_link_clicked")}
             className="mt-8 inline-flex items-center gap-3 rounded-xl bg-white px-8 py-4 text-sm font-black text-slate-950 transition hover:bg-slate-200"
           >
             Iniciar onboarding LF360
@@ -503,11 +622,22 @@ export default function Home() {
       <button
         onClick={() => enviarLead("general")}
         disabled={loading !== null}
-        className="fixed bottom-8 right-8 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-500 text-slate-950 shadow-[0_0_30px_rgba(16,185,129,0.3)] transition-all hover:scale-110 disabled:cursor-not-allowed disabled:opacity-60"
+        className="fixed bottom-24 right-6 z-50 hidden h-14 w-14 items-center justify-center rounded-full bg-emerald-500 text-slate-950 shadow-[0_0_30px_rgba(16,185,129,0.3)] transition-all hover:scale-110 disabled:cursor-not-allowed disabled:opacity-60 md:flex"
         aria-label="Solicitar evaluación inicial"
       >
         <Terminal className="h-6 w-6" />
       </button>
+
+      <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-white/10 bg-[#020617]/95 p-4 backdrop-blur md:hidden">
+        <button
+          onClick={() => enviarLead("general")}
+          disabled={loading !== null}
+          className="flex w-full items-center justify-center gap-3 rounded-xl bg-emerald-400 px-5 py-4 text-sm font-black text-slate-950 shadow-[0_0_30px_rgba(16,185,129,0.18)] disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          Solicitar diagnóstico inicial
+          <ArrowRight className="h-4 w-4" />
+        </button>
+      </div>
     </main>
   );
 }
@@ -589,7 +719,7 @@ function BentoProblemCard({
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className={`flex min-h-[410px] w-full flex-col justify-between rounded-3xl border p-8 text-left transition-all hover:-translate-y-1 hover:shadow-2xl disabled:cursor-not-allowed disabled:opacity-60 ${card.className}`}
+      className={`flex min-h-[360px] w-full flex-col justify-between rounded-3xl border p-7 text-left transition-all hover:-translate-y-1 hover:shadow-2xl disabled:cursor-not-allowed disabled:opacity-60 md:min-h-[410px] md:p-8 ${card.className}`}
     >
       <div>
         <p
@@ -672,6 +802,48 @@ function FrictionQuestion({
   );
 }
 
+function CaseCard({
+  label,
+  title,
+  problem,
+  intervention,
+  result
+}: {
+  label: string;
+  title: string;
+  problem: string;
+  intervention: string;
+  result: string;
+}) {
+  return (
+    <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-7 shadow-2xl shadow-black/10">
+      <p className="font-mono text-xs font-black uppercase tracking-[0.22em] text-emerald-400">
+        {label}
+      </p>
+      <h3 className="mt-4 text-2xl font-black tracking-tight text-white">
+        {title}
+      </h3>
+
+      <div className="mt-6 grid gap-4">
+        <CaseLine label="Problema" text={problem} />
+        <CaseLine label="Intervención" text={intervention} />
+        <CaseLine label="Resultado" text={result} />
+      </div>
+    </div>
+  );
+}
+
+function CaseLine({ label, text }: { label: string; text: string }) {
+  return (
+    <div>
+      <p className="text-xs font-black uppercase tracking-widest text-slate-500">
+        {label}
+      </p>
+      <p className="mt-1 text-sm leading-relaxed text-slate-300">{text}</p>
+    </div>
+  );
+}
+
 function EngineStep({
   num,
   title,
@@ -699,7 +871,7 @@ function AuthorityBlock({
   title,
   text
 }: {
-  icon: React.ReactNode;
+  icon: ReactNode;
   title: string;
   text: string;
 }) {
