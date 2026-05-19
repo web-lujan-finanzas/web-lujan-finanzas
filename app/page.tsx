@@ -173,23 +173,26 @@ export default function Home() {
         </div>
       </header>
 
-      <section id="inicio" className="relative overflow-hidden px-6 pb-20 pt-48">
+      <section
+        id="inicio"
+        className="relative overflow-hidden px-6 pb-20 pt-32 md:pt-40"
+      >
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(16,185,129,0.1),transparent_40%)]" />
 
-        <div className="relative mx-auto grid max-w-7xl items-center gap-16 lg:grid-cols-[1.1fr_.9fr]">
+        <div className="relative mx-auto grid max-w-7xl items-center gap-12 lg:grid-cols-[1.1fr_.9fr]">
           <div>
             <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-mono uppercase tracking-widest text-slate-400">
               <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-400" />
-              Luján de Cuyo / Finanzas, procesos y automatización
+              Finanzas · Procesos · Automatización
             </div>
 
-            <h1 className="bg-gradient-to-br from-white to-slate-500 bg-clip-text text-5xl font-black leading-tight tracking-tight text-transparent md:text-7xl">
+            <h1 className="bg-gradient-to-br from-white to-slate-500 bg-clip-text text-5xl font-black leading-[1.05] tracking-tight text-transparent md:text-6xl xl:text-7xl">
               Evolucioná tu gestión financiera. <br />
               Ordená la empresa como un{" "}
               <span className="text-emerald-400">sistema.</span>
             </h1>
 
-            <p className="mt-8 max-w-xl text-lg leading-relaxed text-slate-400">
+            <p className="mt-6 max-w-xl text-lg leading-relaxed text-slate-400">
               Luján Finanzas integra contabilidad, control operativo y
               automatización para que dejes de decidir solo con el saldo del
               banco, planillas desactualizadas o información dispersa.
@@ -199,7 +202,7 @@ export default function Home() {
               Contador Público + experiencia gestionando empresa + automatización real de procesos
             </p>
 
-            <div className="mt-10 flex flex-col gap-4 sm:flex-row">
+            <div className="mt-8 flex flex-col gap-4 sm:flex-row">
               <button
                 onClick={() => enviarLead("cfo")}
                 disabled={loading !== null}
@@ -219,8 +222,10 @@ export default function Home() {
             </div>
           </div>
 
-          <div className="relative z-10 hidden lg:block">
-            <DashboardMockup />
+          <div className="relative z-10 hidden lg:block lg:-mt-10">
+            <div className="rounded-2xl border border-white/15 shadow-[0_0_80px_rgba(16,185,129,0.10)] transition-all duration-700 hover:shadow-[0_0_100px_rgba(16,185,129,0.15)]">
+              <DashboardMockup />
+            </div>
           </div>
         </div>
       </section>
